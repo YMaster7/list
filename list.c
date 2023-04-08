@@ -7,12 +7,18 @@
 #include <time.h>
 #include <linux/limits.h>
 
-void path_join(char *buf, const char *path1, const char *path2) {
-    strcpy(buf, path1);
-    if (path1[strlen(path1) - 1] != '/') {
-        strcat(buf, "/");
+void path_cat(char *dest, const char *src) {
+    if (dest[strlen(dest) - 1] != '/') {
+        strcat(dest, "/");
     }
-    strcat(buf, path2);
+    strcat(dest, src);
+}
+
+void path_remove_last(char *path) {
+    char *last_slash = strrchr(path, '/');
+    if (last_slash != NULL) {
+        *last_slash = '\0';
+    }
 }
 
 // Convert a size string to bytes
@@ -77,10 +83,9 @@ void print_file(struct stat st, const char *path, long long min_size,
            dir_indicator);
 }
 
-void list(const char *path, int recursive, int all, long long min_size,
+void list(char *path, int recursive, int all, long long min_size,
           long long max_size, int n_days) {
     static struct stat st;
-    char full_path[PATH_MAX];
 
     if (stat(path, &st) == -1) {
         perror(path);
@@ -102,19 +107,21 @@ void list(const char *path, int recursive, int all, long long min_size,
                 continue;
             }
             
-            path_join(full_path, path, entry->d_name);
+            path_cat(path, entry->d_name);
 
-            if (stat(full_path, &st) == -1) {
-                perror(full_path);
+            if (stat(path, &st) == -1) {
+                perror(path);
                 return;
             }
 
-            print_file(st, full_path, min_size, max_size, n_days);
+            print_file(st, path, min_size, max_size, n_days);
             if (S_ISDIR(st.st_mode) && recursive &&
                 strcmp(entry->d_name, ".") != 0 &&
                 strcmp(entry->d_name, "..") != 0) {
-                list(full_path, recursive, all, min_size, max_size, n_days);
+                list(path, recursive, all, min_size, max_size, n_days);
             }
+
+            path_remove_last(path);
         }
     }
 }
@@ -153,12 +160,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    char full_path[PATH_MAX];
     int num_args = argc - optind;
     if (num_args == 0) {
-        list(".", recursive, all, min_size, max_size, n_days);
+        strcpy(full_path, ".");
+        list(full_path, recursive, all, min_size, max_size, n_days);
     } else {
         for (int i = optind; i < argc; i++) {
-            list(argv[i], recursive, all, min_size, max_size, n_days);
+            strcpy(full_path, argv[i]);
+            list(full_path, recursive, all, min_size, max_size, n_days);
         }
     }
 
