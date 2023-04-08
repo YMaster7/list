@@ -55,6 +55,8 @@ list -a
 
 ```
 list -l 1024 -h 1048576
+# or
+list -l 1KB -h 1MB
 ```
 
 7.  List files modified within the last 7 days:
